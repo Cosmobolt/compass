@@ -48,7 +48,14 @@ export default function Settings() {
     if (mine) {
       setFeedMsg(`Added, but it didn't load: ${mine.error}. Check the link.`);
     } else {
-      setFeedMsg("Connected.");
+      const c = r.counts[feed.id];
+      setFeedMsg(
+        !c || c.total === 0
+          ? "Connected, but this calendar has no events in it. If it's an iCloud link, check you published the calendar your events are actually in."
+          : c.found === 0
+            ? `Connected. It has ${c.total} events, but none between two weeks ago and four months from now.`
+            : `Connected. Found ${c.found} events from two weeks ago to four months ahead. They're in the Calendar tab.`,
+      );
       setFeedName("");
       setFeedUrl("");
     }

@@ -1,6 +1,9 @@
 import ICAL from "ical.js";
 
-const MAX_OCCURRENCES_PER_EVENT = 400;
+// Safety caps. Iterations count every occurrence from the series start (a daily event since 2015 is ~4,000),
+// while the per-event output cap only counts occurrences inside the requested window.
+const MAX_ITERATIONS_PER_EVENT = 50_000;
+const MAX_OCCURRENCES_PER_EVENT = 500;
 
 export interface OutEvent {
   id: string;
@@ -13,6 +16,11 @@ export interface OutEvent {
 }
 
 export function parseCalendar(text: string, feedId: string, from: Date, to: Date): OutEvent[] {
+  return parseCalendarWithStats(text, feedId, from, to).events;
+}
+
+/** Also reports how many events the file holds in total, so the app can explain an empty result. */
+export function parseCalendarWithStats(text: string, feedId: string, from: Date, to: Date): { events: OutEvent[]; total: number } {
   const comp = new ICAL.Component(ICAL.parse(text));
   for (const tz of comp.getAllSubcomponents("vtimezone")) {
     ICAL.TimezoneService.register(tz);
@@ -26,9 +34,11 @@ export function parseCalendar(text: string, feedId: string, from: Date, to: Date
     if (ev.isRecurrenceException()) exceptions.push(ev);
     else masters.set(ev.uid, ev);
   }
+  const orphans: ICAL.Event[] = [];
   for (const ex of exceptions) {
     const m = masters.get(ex.uid);
-    if (m) m.relateException(ex);
+    if (m && m.isRecurring()) m.relateException(ex);
+    else orphans.push(ex); // a moved occurrence whose series isn't in the feed: show it on its own
   }
 
   const out: OutEvent[] = [];
@@ -57,14 +67,19 @@ export function parseCalendar(text: string, feedId: string, from: Date, to: Date
     }
     const it = ev.iterator();
     let next: ICAL.Time | null;
-    let count = 0;
-    while ((next = it.next()) && count < MAX_OCCURRENCES_PER_EVENT) {
+    let iterations = 0;
+    let kept = 0;
+    while ((next = it.next()) && iterations++ < MAX_ITERATIONS_PER_EVENT && kept < MAX_OCCURRENCES_PER_EVENT) {
       if (next.toJSDate() > to) break;
       const occ = ev.getOccurrenceDetails(next);
+      const before = out.length;
       push(ev, occ.startDate, occ.endDate, occ.item);
-      count++;
+      kept += out.length - before;
     }
   }
-  return out;
+  for (const ex of orphans) {
+    if (ex.startDate) push(ex, ex.startDate, ex.endDate ?? ex.startDate, ex);
+  }
+  return { events: out, total: masters.size + orphans.length };
 }
 

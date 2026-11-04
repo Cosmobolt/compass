@@ -55,6 +55,22 @@ export default function Calendar() {
         </div>
       ))}
 
+      {(() => {
+        // If nothing falls in the next two weeks, point to the next event so it doesn't look broken.
+        const horizon = addDays(today, 14).getTime();
+        const later = state.events.filter((e) => new Date(e.start).getTime() >= horizon).sort((a, b) => a.start.localeCompare(b.start));
+        const inRange = state.events.some((e) => {
+          const t = new Date(e.start).getTime();
+          return t >= today.getTime() && t < horizon;
+        });
+        if (inRange || later.length === 0) return null;
+        return (
+          <div className="banner accent">
+            No calendar events in the next two weeks. Next one: {later[0].title}, {fmtShortDay(new Date(later[0].start))}.
+          </div>
+        );
+      })()}
+
       {days.map((d) => {
         const evs = eventsForDay(state, d);
         const lit = liturgicalDay(d);

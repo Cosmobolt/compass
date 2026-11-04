@@ -1,4 +1,4 @@
-import { parseCalendar, type OutEvent } from "@/lib/ical-parse";
+import { parseCalendarWithStats, type OutEvent } from "@/lib/ical-parse";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 
@@ -79,7 +79,8 @@ export async function POST(request: Request) {
     feeds.map(async (f) => {
       try {
         const text = await fetchCalendar(f.url);
-        return { id: f.id, events: parseCalendar(text, f.id, from, to) };
+        const { events, total } = parseCalendarWithStats(text, f.id, from, to);
+        return { id: f.id, events, total };
       } catch (err) {
         return { id: f.id, events: [] as OutEvent[], error: err instanceof Error ? err.message : "Couldn't load" };
       }

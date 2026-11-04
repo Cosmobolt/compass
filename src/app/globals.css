@@ -412,6 +412,7 @@ label.field > textarea {
 }
 .tab {
   display: flex;
+  white-space: nowrap;
   flex-direction: column;
   align-items: center;
   gap: 2px;
@@ -420,7 +421,8 @@ label.field > textarea {
   color: var(--muted);
   text-decoration: none;
   padding: 4px 8px;
-  min-width: 60px;
+  flex: 1;
+  min-width: 0;
   border-radius: 10px;
 }
 .tab.active {
@@ -535,4 +537,62 @@ ol.help {
 }
 ol.help li + li {
   margin-top: 4px;
+}
+
+/* Tasks */
+.task-main {
+  all: unset;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+  display: block;
+}
+.task-main .title {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+  display: block;
+}
+.task.done .task-main .title,
+.task.skipped .task-main .title {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.star {
+  color: var(--white);
+}
+.check.half {
+  border-color: var(--accent);
+  background: linear-gradient(90deg, var(--accent-soft) 50%, var(--surface) 50%);
+}
+.seg.wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.seg.wrap button + button {
+  border-left: none;
+}
+.seg.wrap button:nth-child(even) {
+  border-left: 1px solid var(--border);
+}
+.seg.wrap button:nth-child(n + 3) {
+  border-top: 1px solid var(--border);
+}
+.seg button.on-accent {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.seg button.on-muted {
+  background: var(--surface-2);
+  color: var(--text);
+}
+input[type="date"] {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  width: 100%;
+  min-height: 44px;
+  min-width: 0;
 }

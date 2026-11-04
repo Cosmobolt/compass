@@ -8,6 +8,7 @@ import { liturgicalDay } from "@/lib/liturgy";
 import { syncCalendars } from "@/lib/sync";
 import type { AppState, Deadline } from "@/lib/types";
 import PracticeList from "@/components/PracticeList";
+import { importClaudeTasks, isOpen, setTaskStatus } from "@/lib/tasks";
 
 function greeting(h: number) {
   if (h < 5) return "Still up";
@@ -42,6 +43,10 @@ export default function Today() {
     if (age > 3 * 3600_000) syncCalendars(state.feeds);
   }, [hydrated, state.feeds, state.eventsFetchedAt]);
 
+  useEffect(() => {
+    if (hydrated) importClaudeTasks();
+  }, [hydrated]);
+
   if (!hydrated || !now) return null;
 
   const today = dayKey(now);
@@ -59,6 +64,9 @@ export default function Today() {
   const checkedIn = Boolean(state.checkins[today]);
   const focus = state.focus[today] ?? "";
   const suggestion = suggestFocus(state, now);
+  const todaysTasks = state.tasks
+    .filter((t) => isOpen(t) && ((t.due && t.due <= today) || t.status === "partial"))
+    .sort((a, b) => Number(Boolean(b.important)) - Number(Boolean(a.important)) || (a.due ?? "").localeCompare(b.due ?? ""));
   const firstRun = state.feeds.length === 0 && state.classes.length === 0 && state.deadlines.length === 0;
 
   return (
@@ -145,6 +153,45 @@ export default function Today() {
           );
         })}
         {events.length === 0 && <div className="empty">Nothing scheduled today.</div>}
+      </div>
+
+      <h2 style={{ display: "flex", justifyContent: "space-between" }}>
+        <span>Tasks</span>
+        <Link href="/tasks" style={{ textTransform: "none", letterSpacing: 0 }}>
+          All tasks
+        </Link>
+      </h2>
+      <div className="list">
+        {todaysTasks.slice(0, 6).map((t) => (
+          <label className="row" key={t.id} style={{ cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              className={`check${t.status === "partial" ? " half" : ""}`}
+              checked={false}
+              onChange={() => setTaskStatus(t.id, "done")}
+            />
+            <div className="grow">
+              <div className="title">
+                {t.important && <span className="star">★ </span>}
+                {t.title}
+              </div>
+              <div className="meta">
+                {t.status === "partial" ? "Partly done" : t.due && t.due < today ? "Overdue" : "Today"}
+                {t.source === "claude" ? " · From Claude" : ""}
+              </div>
+            </div>
+          </label>
+        ))}
+        {todaysTasks.length > 6 && (
+          <Link href="/tasks" className="row" style={{ color: "var(--accent)", textDecoration: "none" }}>
+            {todaysTasks.length - 6} more
+          </Link>
+        )}
+        {todaysTasks.length === 0 && (
+          <div className="empty">
+            Nothing for today. <Link href="/tasks">Add a task</Link>
+          </div>
+        )}
       </div>
 
       <h2>Due this week</h2>

@@ -24,6 +24,8 @@ export const DEFAULT_STATE: AppState = {
   focus: {},
   checkins: {},
   catchUp: [],
+  tasks: [],
+  claudeTaskIds: [],
 };
 
 let cache: AppState | null = null;

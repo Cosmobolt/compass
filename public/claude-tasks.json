@@ -1,0 +1,18 @@
+{
+  "_about": "Tasks Claude adds for you. The app imports each id once. This file is public, so keep entries general.",
+  "tasks": [
+    {
+      "id": "2026-11-05-brightspace-feed",
+      "title": "Connect your Brightspace calendar in Setup",
+      "notes": "Brightspace: Calendar, Subscribe, copy the link, then paste it in Setup as 'Brightspace (deadlines)'. Your due dates will show up in Deadlines.",
+      "due": "2026-11-05"
+    },
+    {
+      "id": "2026-11-05-list-deadlines",
+      "title": "List every deadline due this month in Deadlines",
+      "notes": "Check each module page on Brightspace. Anything overdue: email the lecturer today about an extension.",
+      "due": "2026-11-05",
+      "important": true
+    }
+  ]
+}

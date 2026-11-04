@@ -67,6 +67,21 @@ export interface CheckIn {
   savedAt: string;
 }
 
+export type TaskStatus = "todo" | "partial" | "done" | "skipped";
+
+export interface Task {
+  id: string;
+  title: string;
+  notes?: string;
+  due?: string; // YYYY-MM-DD
+  important?: boolean;
+  status: TaskStatus;
+  /** Where it came from: added in the app, or sent by Claude through claude-tasks.json. */
+  source: "me" | "claude";
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AppState {
   version: 1;
   name: string;
@@ -82,4 +97,7 @@ export interface AppState {
   focus: Record<string, string>;
   checkins: Record<string, CheckIn>;
   catchUp: CatchUp[];
+  tasks: Task[];
+  /** Ids of Claude-sent tasks already imported, so deleting one doesn't bring it back. */
+  claudeTaskIds: string[];
 }

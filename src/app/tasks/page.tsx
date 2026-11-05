@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { update, useAppState, useHydrated, useNow } from "@/lib/store";
-import { dayKey, fmtShortDay, fromDayKey, uid } from "@/lib/dates";
+import { addDays, dayKey, fmtShortDay, fromDayKey, logicalDay, uid } from "@/lib/dates";
 import { STATUS_LABEL, importClaudeTasks, isOpen, setTaskStatus } from "@/lib/tasks";
 import type { Task, TaskStatus } from "@/lib/types";
 
@@ -76,7 +76,7 @@ function TaskRow({ t, today }: { t: Task; today: string }) {
             <button
               type="button"
               className="btn small"
-              onClick={() => patch((x) => ({ ...x, due: dayKey(new Date(fromDayKey(today).getTime() + 86400000)) }))}
+              onClick={() => patch((x) => ({ ...x, due: dayKey(addDays(fromDayKey(today), 1)) }))}
             >
               Move to tomorrow
             </button>
@@ -113,7 +113,7 @@ export default function Tasks() {
   }, [hydrated]);
 
   if (!hydrated || !now) return null;
-  const today = dayKey(now);
+  const today = dayKey(logicalDay(now));
 
   const byPriority = (a: Task, b: Task) =>
     Number(Boolean(b.important)) - Number(Boolean(a.important)) || (a.due ?? "9999").localeCompare(b.due ?? "9999") || a.createdAt.localeCompare(b.createdAt);
@@ -140,7 +140,7 @@ export default function Tasks() {
     setImportant(false);
   };
 
-  const doneToday = state.tasks.filter((t) => t.status === "done" && dayKey(new Date(t.updatedAt)) === today).length;
+  const doneToday = state.tasks.filter((t) => t.status === "done" && dayKey(logicalDay(new Date(t.updatedAt))) === today).length;
 
   return (
     <>
@@ -160,7 +160,7 @@ export default function Tasks() {
               type="button"
               className={due && due !== today ? "on-accent" : ""}
               aria-pressed={Boolean(due && due !== today)}
-              onClick={() => setDue(due && due !== today ? "" : dayKey(new Date(now.getTime() + 86400000)))}
+              onClick={() => setDue(due && due !== today ? "" : dayKey(addDays(fromDayKey(today), 1)))}
             >
               Tomorrow
             </button>

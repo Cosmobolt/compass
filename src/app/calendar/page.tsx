@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { eventsForDay, isLecture, useAppState, useHydrated, useNow } from "@/lib/store";
-import { addDays, fmtShortDay, fmtTime, startOfDay } from "@/lib/dates";
+import { addDays, fmtShortDay, fmtTime, logicalDay } from "@/lib/dates";
 import { liturgicalDay } from "@/lib/liturgy";
 import { syncCalendars } from "@/lib/sync";
 
@@ -15,7 +15,7 @@ export default function Calendar() {
   const [errors, setErrors] = useState<string[]>([]);
   if (!hydrated || !now) return null;
 
-  const today = startOfDay(now);
+  const today = logicalDay(now);
   const days = Array.from({ length: 14 }, (_, i) => addDays(today, i));
   const feedName = (id: string) => (id === "classes" ? "Your classes" : state.feeds.find((f) => f.id === id)?.name ?? "");
 

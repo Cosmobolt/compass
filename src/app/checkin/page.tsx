@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { eventsForDay, isLecture, update, useAppState, useHydrated, useNow } from "@/lib/store";
-import { addDays, dayKey, fmtShortDay, fmtTime, fromDayKey, uid } from "@/lib/dates";
+import { addDays, dayKey, fmtShortDay, fmtTime, fromDayKey, uid, logicalDay } from "@/lib/dates";
 import type { AppState, CheckIn } from "@/lib/types";
 import PracticeList, { practicesFor } from "@/components/PracticeList";
 
@@ -17,9 +17,10 @@ function streak(state: AppState, today: Date): number {
 }
 
 function CheckInForm({ state, now }: { state: AppState; now: Date }) {
-  const key = dayKey(now);
+  const day = logicalDay(now);
+  const key = dayKey(day);
   const existing = state.checkins[key];
-  const lectures = eventsForDay(state, now).filter((e) => isLecture(state, e) && new Date(e.start) <= now);
+  const lectures = eventsForDay(state, day).filter((e) => isLecture(state, e) && new Date(e.start) <= now);
 
   const [attendance, setAttendance] = useState<CheckIn["attendance"]>(existing?.attendance ?? {});
   const [wentWell, setWentWell] = useState(existing?.wentWell ?? "");
@@ -29,7 +30,7 @@ function CheckInForm({ state, now }: { state: AppState; now: Date }) {
 
   const save = () => {
     update((s) => {
-      const tomorrowKey = dayKey(addDays(now, 1));
+      const tomorrowKey = dayKey(addDays(day, 1));
       // Every missed class goes on the catch-up list once; un-marking it removes it again.
       const missedIds = new Set(Object.entries(attendance).filter(([, v]) => v === "missed").map(([k]) => k));
       const catchUp = s.catchUp.filter((c) => !(c.date === key && c.id.startsWith("cu:") && !missedIds.has(c.id.slice(3))));
@@ -88,7 +89,7 @@ function CheckInForm({ state, now }: { state: AppState; now: Date }) {
       )}
 
       <h2>Prayer today</h2>
-      <PracticeList date={now} />
+      <PracticeList date={day} />
 
       <h2>Examen</h2>
       <div className="card stack">
@@ -125,9 +126,10 @@ export default function CheckInPage() {
   const [newCatch, setNewCatch] = useState("");
   if (!hydrated || !now) return null;
 
-  const key = dayKey(now);
+  const day = logicalDay(now);
+  const key = dayKey(day);
   const pending = state.catchUp.filter((c) => !c.done);
-  const s = streak(state, now);
+  const s = streak(state, day);
 
   // Prayer consistency over the last 7 days.
   let planned = 0;
@@ -135,7 +137,7 @@ export default function CheckInPage() {
   // Only count days since you started using Compass, so week one isn't a wall of zeros.
   const firstDay = [...Object.keys(state.practiceLog), ...Object.keys(state.checkins)].sort()[0] ?? key;
   for (let i = 0; i < 7; i++) {
-    const d = addDays(now, -i);
+    const d = addDays(day, -i);
     if (dayKey(d) < firstDay) break;
     const ps = practicesFor(state.practices, d);
     const log = new Set(state.practiceLog[dayKey(d)] ?? []);

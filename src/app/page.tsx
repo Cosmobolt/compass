@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { eventsForDay, isLecture, update, useAppState, useHydrated, useNow } from "@/lib/store";
-import { addDays, dayKey, fmtDay, fmtTime, relativeDue } from "@/lib/dates";
+import { addDays, dayKey, fmtDay, fmtTime, logicalDay, relativeDue } from "@/lib/dates";
 import { liturgicalDay } from "@/lib/liturgy";
 import { syncCalendars } from "@/lib/sync";
 import type { AppState, Deadline } from "@/lib/types";
@@ -21,8 +21,21 @@ function nextStep(d: Deadline) {
   return d.steps.find((s) => !s.done)?.text;
 }
 
-/** Suggest a "one thing" when the user hasn't set one: the next step of the most urgent deadline. */
-function suggestFocus(state: AppState, now: Date): string | undefined {
+/**
+ * Suggest a "one thing" when today has none: what last night's check-in said for today, then
+ * yesterday's one thing carried over, then the next step of the most urgent deadline.
+ */
+function suggestFocus(state: AppState, now: Date, day: Date): { text: string; why: string } | undefined {
+  const yKey = dayKey(addDays(day, -1));
+  const planned = state.checkins[yKey]?.tomorrow?.trim();
+  if (planned) return { text: planned, why: "From last night's check-in" };
+  const carry = state.focus[yKey]?.trim();
+  if (carry) return { text: carry, why: "Carry over yesterday's one thing" };
+  const d = deadlineFocus(state, now);
+  return d ? { text: d, why: "From your most urgent deadline" } : undefined;
+}
+
+function deadlineFocus(state: AppState, now: Date): string | undefined {
   const open = state.deadlines.filter((d) => !d.done).sort((a, b) => a.due.localeCompare(b.due));
   const d = open[0];
   if (!d) return undefined;
@@ -49,9 +62,10 @@ export default function Today() {
 
   if (!hydrated || !now) return null;
 
-  const today = dayKey(now);
-  const lit = liturgicalDay(now);
-  const events = eventsForDay(state, now);
+  const day = logicalDay(now);
+  const today = dayKey(day);
+  const lit = liturgicalDay(day);
+  const events = eventsForDay(state, day);
   const timed = events.filter((e) => !e.allDay);
   const allDay = events.filter((e) => e.allDay);
   const nextUp = timed.find((e) => new Date(e.end) > now);
@@ -63,7 +77,7 @@ export default function Today() {
   const catchUp = state.catchUp.filter((c) => !c.done);
   const checkedIn = Boolean(state.checkins[today]);
   const focus = state.focus[today] ?? "";
-  const suggestion = suggestFocus(state, now);
+  const suggestion = suggestFocus(state, now, day);
   const todaysTasks = state.tasks
     .filter((t) => isOpen(t) && ((t.due && t.due <= today) || t.status === "partial"))
     .sort((a, b) => Number(Boolean(b.important)) - Number(Boolean(a.important)) || (a.due ?? "").localeCompare(b.due ?? ""));
@@ -71,7 +85,7 @@ export default function Today() {
 
   return (
     <>
-      <p className="muted small">{fmtDay(now)}</p>
+      <p className="muted small">{fmtDay(day)}</p>
       <h1>
         {greeting(now.getHours())}
         {state.name ? `, ${state.name}` : ""}
@@ -99,7 +113,7 @@ export default function Today() {
         <textarea
           rows={2}
           aria-label="Your one thing today"
-          placeholder={suggestion ?? "What's the one thing that would make today a win?"}
+          placeholder={suggestion?.text ?? "What's the one thing that would make today a win?"}
           value={focus}
           onChange={(e) => update((s) => ({ ...s, focus: { ...s.focus, [today]: e.target.value } }))}
         />
@@ -107,9 +121,9 @@ export default function Today() {
           <button
             className="btn ghost small"
             style={{ marginTop: 6, paddingLeft: 0 }}
-            onClick={() => update((s) => ({ ...s, focus: { ...s.focus, [today]: suggestion } }))}
+            onClick={() => update((s) => ({ ...s, focus: { ...s.focus, [today]: suggestion.text } }))}
           >
-            Use this suggestion
+            {suggestion.why}: use it
           </button>
         )}
       </div>
@@ -228,7 +242,7 @@ export default function Today() {
       )}
 
       <h2>Prayer</h2>
-      <PracticeList date={now} />
+      <PracticeList date={day} />
 
       <h2>Tonight</h2>
       {checkedIn ? (

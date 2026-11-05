@@ -142,8 +142,10 @@ export const DEADLINE_PATTERN = /\b(due|deadline|submi(t|ssion)|assignment|quiz|
 let nowCache: Date | null = null;
 const nowListeners = new Set<() => void>();
 let nowTimer: ReturnType<typeof setInterval> | null = null;
+const WAKE_EVENTS = ["visibilitychange", "pageshow", "focus"] as const;
 
-// Re-read the clock when the app comes back to the foreground, so a phone left overnight shows today.
+// Re-read the clock regularly and whenever the app comes back to the foreground, so a phone left
+// overnight (or an app restored from the background) shows the new day.
 function tick() {
   nowCache = new Date();
   nowListeners.forEach((x) => x());
@@ -152,24 +154,27 @@ function tick() {
 function subscribeNow(l: () => void) {
   nowListeners.add(l);
   if (!nowTimer) {
-    nowTimer = setInterval(tick, 30_000);
-    document.addEventListener("visibilitychange", tick);
+    nowCache = new Date();
+    nowTimer = setInterval(tick, 20_000);
+    WAKE_EVENTS.forEach((e) => window.addEventListener(e, tick));
   }
   return () => {
     nowListeners.delete(l);
     if (nowListeners.size === 0 && nowTimer) {
       clearInterval(nowTimer);
-      document.removeEventListener("visibilitychange", tick);
+      WAKE_EVENTS.forEach((e) => window.removeEventListener(e, tick));
       nowTimer = null;
     }
   };
 }
 
-/** Current time, ticking every 30s on the client. Null while prerendering, so pages never bake in a build-time date. */
+function nowSnapshot(): Date {
+  // Timers are frozen while a phone sleeps, so never hand out a reading more than a minute old.
+  if (!nowCache || Date.now() - nowCache.getTime() > 60_000) nowCache = new Date();
+  return nowCache;
+}
+
+/** Current time, ticking on the client. Null while prerendering, so pages never bake in a build-time date. */
 export function useNow(): Date | null {
-  return useSyncExternalStore(
-    subscribeNow,
-    () => (nowCache ??= new Date()),
-    () => null,
-  );
+  return useSyncExternalStore(subscribeNow, nowSnapshot, () => null);
 }

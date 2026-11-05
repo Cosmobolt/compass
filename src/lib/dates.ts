@@ -50,6 +50,14 @@ export function relativeDue(due: Date, now: Date = new Date()): string {
   return `${fmtShortDay(due)} (${days} days)`;
 }
 
+/** Hour your "day" ends. Before 3am still counts as the previous day, so a late check-in or Rosary lands on the right date. */
+export const DAY_ENDS_AT_HOUR = 3;
+
+/** Midnight of the day you're living in right now (see DAY_ENDS_AT_HOUR). */
+export function logicalDay(now: Date = new Date()): Date {
+  return startOfDay(new Date(now.getTime() - DAY_ENDS_AT_HOUR * 3600_000));
+}
+
 export function uid(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 }
